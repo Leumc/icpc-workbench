@@ -36,7 +36,7 @@ export default function StatStrip({ items }: { items: StatStripItem[] }) {
           <div className="stat-text">
             <span className="stat-label">{it.label}</span>
             <span className="stat-value-row">
-              <strong>{it.value}</strong>
+              <strong className={typeof it.value === 'string' && /\D{2}/.test(it.value) ? 'is-text' : undefined}>{it.value}</strong>
               {it.badge && <span className="stat-badge">{it.badge}</span>}
             </span>
           </div>

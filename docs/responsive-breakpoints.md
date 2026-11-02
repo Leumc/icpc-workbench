@@ -21,7 +21,7 @@
 | 992 | ≥ | antd `lg` | 两列起点：Contests / About / Settings / Today |
 | 920 | ≤ | CSS `index.css:1597` 段 + `BP.narrowTaxonomy` | **换结构**：分类侧栏 → 顶部 `Select`（Problems / Templates） |
 | 768 | ≥ | antd `md` | Mastery 3 列、About 2 列、Plans 表格「来源」列出现 |
-| 768 | ≤ | CSS `index.css:4150` 段 + `BP.mdDown` | 页面内边距收紧、卡片内「内容 \| 操作」下沉（`.card-actions-row`、`.review-item`） |
+| 768 | ≤ | CSS `index.css:4150` 段 + `BP.mdDown` | **换结构**：侧边栏收进抽屉，由悬浮球打开（`App.tsx`）；页面内边距收紧、卡片内「内容 \| 操作」下沉（`.card-actions-row`、`.review-item`） |
 | 640 | ≤ | CSS `index.css:3838` / `4194` 段 + `BP.smDown` | 手机：Modal 贴边、命令面板列表降高 |
 | 576 | ≥ | antd `sm` | 预留，当前无直接使用 |
 | 575 | ≤ | antd `xs` | 单列兜底（`xs={24}`） |

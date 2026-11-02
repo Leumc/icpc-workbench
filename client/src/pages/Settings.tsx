@@ -82,6 +82,18 @@ const NEW_DRAFT_KEY = '__new__'
 // 且表单渲染出与说明文字口径矛盾的输入框。守卫见 client/test/credentialsTable.test.ts。
 
 
+/** 设置页很长（桌面三屏多）：分区跳转让靠下的备份、清理等入口不用靠滚动去找 */
+const SETTINGS_SECTIONS = [
+  ['settings-ai', 'AI 配置'],
+  ['settings-accounts', '平台账号'],
+  ['settings-reminder', '提醒'],
+  ['settings-data', '导出'],
+  ['settings-clist', '难度备选'],
+  ['settings-knowledge', '知识点'],
+  ['settings-backup', '备份'],
+  ['settings-cleanup', '清理文件'],
+] as const
+
 export default function Settings() {
   const { message, modal } = AntdApp.useApp()
   const { preference, setPreference } = useTheme()
@@ -867,6 +879,13 @@ export default function Settings() {
         }
       />
       <div className="settings-body">
+      <nav className="settings-jump" aria-label="设置分区">
+        {SETTINGS_SECTIONS.map(([id, label]) => (
+          <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            {label}
+          </button>
+        ))}
+      </nav>
       <BackgroundSettings />
       <Row gutter={[16, 24]}>
       <Col xs={24} lg={12} id="settings-ai">
@@ -1306,15 +1325,15 @@ export default function Settings() {
         />
       </Col>
 
-      <Col span={24}>
+      <Col span={24} id="settings-knowledge">
         <KnowledgePipelineCard />
       </Col>
 
       <ImportPlanModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <Col span={24}>
+      <Col span={24} id="settings-backup">
         <BackupCard refreshKey={backupRefresh} />
       </Col>
-      <Col span={24}>
+      <Col span={24} id="settings-cleanup">
         <UploadCleanupCard />
       </Col>
       </Row>

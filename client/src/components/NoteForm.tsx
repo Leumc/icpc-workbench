@@ -205,7 +205,7 @@ export default function NoteForm({ value, onChange }: { value: NoteDraft; onChan
         {ADD_ORDER.map((type) => (
           <Button key={type} size="small" icon={BLOCK_META[type].icon}
             onClick={() => onChange((d) => ({ ...d, blocks: [...d.blocks, newBlock(type)] }))}>
-            增加{BLOCK_META[type].label}
+            增加 {BLOCK_META[type].label}
           </Button>
         ))}
       </div>

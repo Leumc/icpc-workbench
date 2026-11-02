@@ -174,6 +174,7 @@ export default function Problems() {
    * 否则侧栏与 Select 会同时存在于 Tab 顺序里，读屏也会念两遍。
    */
   const narrowTaxonomy = useMediaQuery(BP.narrowTaxonomy)
+  const narrowTable = useMediaQuery(BP.mdDown)
   const [rows, setRows] = useState<ProblemRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -205,8 +206,9 @@ export default function Problems() {
   // 「过滤问题」面板：编辑草稿，点「应用」才生效（展开时以已生效条件为初值）
   const [filterOpen, setFilterOpen] = useState(false)
   // 顶部概览条（难度/平台分布）折叠：偏好写入 localStorage，收起后只留一行标签
+  // 默认收起：展开后两张分布图占掉一整屏，题目表格（这一页的主体）被推到首屏之外
   const [distCollapsed, setDistCollapsed] = useState(() =>
-    readFlag('problems.distCollapsed'),
+    readFlag('problems.distCollapsed', true),
   )
   const toggleDistCollapsed = () =>
     setDistCollapsed((c) => {
@@ -1091,6 +1093,8 @@ export default function Problems() {
       title: '平台',
       dataIndex: 'platform',
       width: 110,
+      // 手机上让位给标题：否则横向滚动后第一屏只有平台、题号和操作，看不到是哪道题
+      responsive: ['md'],
       // sorter: true = 服务端排序（数据源只是当前页，antd 的本地比较函数在这里没有意义）；
       // sortOrder 受控：只有当前排序列亮箭头，null 表示该列未参与排序
       sorter: true,
@@ -1170,6 +1174,7 @@ export default function Problems() {
       title: '标签',
       dataIndex: 'tags',
       width: 230,
+      responsive: ['md'],
       render: (tags: string[], row: ProblemRow) => {
         // 卡点角标（可见可管）：记过「卡在哪」的题一眼可辨——角标直接给出
         // 「卡过 N 次 · 最差卡点」全文（只显示数字的话，类型仍要悬停才能看到）。
@@ -1184,10 +1189,14 @@ export default function Problems() {
         )
         return tags.length || summary || noteTag ? (
           <Space size={4} wrap>
-            {tags.slice(0, 3).map((t) => (
+            {tags.slice(0, 2).map((t) => (
               <Tag key={t}>{t}</Tag>
             ))}
-            {tags.length > 3 && <span className="tag-more">+{tags.length - 3}</span>}
+            {tags.length > 2 && (
+              <Tooltip title={tags.slice(2).join('、')}>
+                <span className="tag-more">+{tags.length - 2}</span>
+              </Tooltip>
+            )}
             {summary && (
               <Tooltip title="记过「卡在哪」，弱项判断与复习排序会据此调整；「更多操作 → 卡在哪」可查看与撤销">
                 <Tag color="warning" style={{ marginInlineEnd: 0 }}>
@@ -1206,6 +1215,7 @@ export default function Problems() {
       title: '提交',
       dataIndex: 'attempts',
       width: 70,
+      responsive: ['md'],
       align: 'right',
       sorter: true,
       sortOrder: sorterOrderOf(sort, 'attempts'),
@@ -1435,7 +1445,6 @@ export default function Problems() {
         <section className="problem-workspace">
           <div className="workspace-topline">
             <div>
-              <span className="workspace-kicker">PROBLEM LIBRARY</span>
               <h2>
                 {tagFilters.length === 0
                   ? '全部题目'
@@ -1635,7 +1644,7 @@ export default function Problems() {
               onChange={onTableChange}
               // 固定列宽合计 738px（操作列聚合后由 850px 降下来）；概览条已移到页顶不再占宽度，
               // 两栏布局下中栏一般足够 970px，更窄的窗口才出横向滚动条，操作列吸附右缘始终可见
-              scroll={{ x: 970 }}
+              scroll={{ x: narrowTable ? 480 : 970 }}
               // 服务端分页：当前页 50 行由后端过滤 + LIMIT 得出，前端不再持有全量数据
               pagination={{
                 current: page,

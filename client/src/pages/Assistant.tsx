@@ -38,6 +38,7 @@ import {
   type PlanApplyResult,
 } from '../api'
 import { readFlag, writeFlag } from '../persistence.ts'
+import { BP } from '../useMediaQuery'
 import type { ParticipatedContest, PlanListItem } from '../types'
 import type { AbilityLevelDetail, AiProviderView, ModelCaps } from '../../../shared/src/index.ts'
 import { getAppZoom } from '../appZoom'
@@ -208,7 +209,8 @@ function turnExcerpt(m: ChatMsg): string {
 const SESSION_ORDER_MSG_KEY = 'assistant-session-order'
 
 function readSideCollapsed(): boolean {
-  return readFlag(SIDE_COLLAPSED_KEY)
+  // 窄屏默认收起：展开的侧栏会盖住对话区，打开页面应先看到对话
+  return readFlag(SIDE_COLLAPSED_KEY) || window.matchMedia(BP.mdDown).matches
 }
 
 /** 能力值卡片里的 rating 证据行：没有合格锚点、也没有分差趋势时返回 null（不占行） */

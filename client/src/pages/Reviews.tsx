@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
-import { Button, Card, Input, Modal, Popconfirm, Select, Space, Tag, Tooltip, App as AntdApp } from 'antd'
+import { Button, Card, Input, Modal, Popconfirm, Segmented, Select, Space, Tag, Tooltip, App as AntdApp } from 'antd'
 import { DeleteOutlined, EditOutlined, HistoryOutlined, ReadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
@@ -118,13 +118,16 @@ export default function Reviews() {
         description="AC 不等于从此记住 —— 间隔复习把短暂理解变成稳定能力"
         extra={
           <Space>
+            {/* 切换视图与新增动作分开：三个同款按钮分不清哪个是当前视图 */}
+            <Segmented
+              value={filter}
+              onChange={(v) => setFilter(v as typeof filter)}
+              options={[
+                { value: 'due', label: `到期复习${dueCount > 0 ? ` · ${dueCount}` : ''}` },
+                { value: 'all', label: '全部队列' },
+              ]}
+            />
             <Button type="primary" onClick={() => setAddOpen(true)}>通过链接添加</Button>
-            <Button type={filter === 'due' ? 'primary' : 'default'} onClick={() => setFilter('due')}>
-              到期复习{dueCount > 0 ? ` · ${dueCount}` : ''}
-            </Button>
-            <Button type={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>
-              全部队列
-            </Button>
           </Space>
         }
       />

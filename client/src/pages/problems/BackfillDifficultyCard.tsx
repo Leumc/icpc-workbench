@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { App as AntdApp, Button, Checkbox, Space } from 'antd'
+import { App as AntdApp, Button, Checkbox, Collapse, Space } from 'antd'
 import type { PlatformId } from '../../../../shared/src/index.ts'
 import { get, post } from '../../api'
 import { BACKFILL_TASK_KEY } from '../../backgroundRuns'
@@ -118,6 +118,17 @@ export function BackfillDifficultyCard({ onStarted }: { onStarted: () => void })
   return (
     <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
       <p style={{ color: 'var(--text-3)' }}>
+        补全库内缺难度、缺原生难度或缺标签的题，覆盖所有平台。请求按站点限速，整轮通常几分钟到三十分钟，随时可以停止，已落库的不受影响，再点一次就从剩下的缺口继续。
+      </p>
+      <Collapse
+        ghost
+        size="small"
+        style={{ marginBottom: 8 }}
+        items={[{
+          key: 'details',
+          label: '了解限速、处理顺序和「无官方难度」的规则',
+          children: (
+            <p style={{ margin: 0, color: 'var(--text-3)' }}>
         补全库内「未知难度 / 未知原生难度 / 缺标签」的题，覆盖所有平台：整表型平台
         （Codeforces / AtCoder / 力扣 / 计蒜客 / 代码源）先拉一次题库表再在本地比对；
         洛谷与牛客按题查题目页（牛客只在待补题上千时才改拉整表）。所有请求都走<b>全局按域名限速</b>：洛谷 ≥4 秒/题、
@@ -141,7 +152,10 @@ export function BackfillDifficultyCard({ onStarted }: { onStarted: () => void })
         这类题与 gym 一样，唯一的出路是在<b>难度格上点击手动填写</b>（手动值优先级最高，回填不会覆盖）。
         平台后来补了评级/标签而负缓存还没到期时，勾选下面的<b>强制重查</b>再点一次，
         本轮就会无视这些缓存、重新问上游。
-      </p>
+            </p>
+          ),
+        }]}
+      />
       <Space>
         <Button loading={busy} disabled={stopping || run?.running === true} onClick={runBackfill}>
           一键回填未知难度

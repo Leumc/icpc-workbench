@@ -54,7 +54,7 @@ export default function SyncStatusCard() {
     <>
       <Card
         size="small"
-        className="sync-status-card"
+        className={`sync-status-card${showBody ? '' : ' is-collapsed'}`}
         title={
           <Space size={8} wrap>
             <span>{title}</span>
@@ -84,17 +84,7 @@ export default function SyncStatusCard() {
           </Space>
         }
       >
-        {showBody ? (
-          running || wrapUp ? (
-            <RunningRows />
-          ) : (
-            <IdlePlatformRows />
-          )
-        ) : (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            已收起：点右侧「展开」查看各平台上次同步结果。
-          </Typography.Text>
-        )}
+        {showBody && (running || wrapUp ? <RunningRows /> : <IdlePlatformRows />)}
       </Card>
       <SyncHistoryDrawer open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </>

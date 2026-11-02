@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ConfigProvider, App as AntdApp, theme as antdTheme } from 'antd'
-import zhCN from 'antd/locale/zh_CN'
+// 必须走 es 路径：antd/locale/zh_CN 是 CommonJS 包装，打包后默认导入拿到的是 { default } 外壳，
+// ConfigProvider 读不到任何文案，整站静默退回英文（Cancel / Select date / Su Mo Tu）
+import zhCN from 'antd/es/locale/zh_CN'
 import { TOKEN_PAIRS } from './tokens.ts'
 import { ThemeContext, type ThemeContextValue, type ThemePreference, type ResolvedTheme } from './themeCore'
 
@@ -271,7 +273,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider value={value}>
-      <ConfigProvider locale={zhCN} theme={antdThemeConfig}>
+      <ConfigProvider locale={zhCN} theme={antdThemeConfig} button={{ autoInsertSpace: false }}>
         <AntdApp>{children}</AntdApp>
       </ConfigProvider>
     </ThemeContext.Provider>

@@ -459,6 +459,11 @@ body {
   min-width: 0;
 }
 
+/* 各页面的按钮组多用 Space 包裹，默认不换行：窄屏下最后一个按钮会被裁掉 */
+.page-header-extra > .ant-space {
+  flex-wrap: wrap;
+}
+
 .page-title {
   margin: 0;
   font-size: 26px;
@@ -754,6 +759,7 @@ body {
   padding: 10px 12px 14px;
   border-top: 1px solid var(--line-soft);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -828,6 +834,8 @@ body {
 }
 
 .sider-footer-version {
+  /* 独占一行：与按钮挤在一行时，198px 的侧栏连「搜索」两个字都放不下 */
+  flex-basis: 100%;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -7395,5 +7403,143 @@ body {
 
 /* 进度条：深底上实心高亮色比浅底更抓眼，统一走品牌填充色 */
 [data-theme='dark'] .ant-progress-bg {
+  background: var(--brand-fill) !important;
+}
+
+/* ---------- 设置页：分区跳转 ---------- */
+.settings-jump {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.settings-jump button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.settings-jump button:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+/* ---------- 窄屏日历：格子只有 40px 宽，复习数和打卡数改为上下排，避免互相压住 ---------- */
+@media (max-width: 768px) {
+  .cell-foot {
+    flex-direction: column;
+    gap: 0;
+    line-height: 1.15;
+  }
+
+  .calendar-card .ant-card-head-wrapper {
+    flex-wrap: wrap;
+  }
+
+  .calendar-card .ant-card-extra {
+    margin-inline-start: 0;
+    padding-bottom: 8px;
+  }
+}
+
+/* 同步状态卡：收起时只留一行标题；窄屏下标题与操作上下排，不互相压住 */
+.sync-status-card.is-collapsed .ant-card-body {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sync-status-card .ant-card-head-wrapper {
+    flex-wrap: wrap;
+  }
+
+  .sync-status-card .ant-card-head-title {
+    white-space: normal;
+  }
+
+  .sync-status-card .ant-card-extra {
+    margin-inline-start: 0;
+    padding-bottom: 8px;
+  }
+}
+
+/* 统计卡里的文字型取值（如「下一课」课程名）：不能和数字一样大，否则比同排数字还抢眼 */
+.stat-value-row strong.is-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ---------- 窄屏导航：悬浮球 + 左侧抽屉 ---------- */
+.nav-fab {
+  position: fixed;
+  /* 低于 Modal / Drawer（1000）：弹窗打开时不浮在弹窗上面 */
+  z-index: 900;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--text-on-brand);
+  font-size: 18px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  /* 拖动时不触发页面滚动 */
+  touch-action: none;
+  user-select: none;
+}
+
+.nav-fab.is-dragging {
+  opacity: 0.85;
+  cursor: grabbing;
+}
+
+.app-nav-drawer .ant-drawer-content {
+  background: var(--surface);
+}
+
+.app-nav-drawer .ant-drawer-body {
+  height: 100%;
+}
+
+/* 全局规则在手机上把抽屉撑满全屏；导航必须露出遮罩，否则点旁边关不掉 */
+.app-nav-drawer .ant-drawer-content-wrapper {
+  width: min(248px, 80vw) !important;
+}
+
+/* ---------- 窄屏 AI 助手：会话侧栏浮在对话区上，不再和对话区抢宽度 ---------- */
+@media (max-width: 768px) {
+  .assistant-layout {
+    position: relative;
+    gap: 8px;
+  }
+
+  .assistant-layout:not(.is-side-collapsed) .assistant-side {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(300px, 100%);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+}
+
+/* AI 来源标签：通用 .ant-tag 底色写在后面、会盖掉实心底，亮色下白字压浅灰几乎看不见 */
+.ant-tag.ai-tag-shimmer {
   background: var(--brand-fill) !important;
 }

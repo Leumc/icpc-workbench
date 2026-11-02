@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Layout, Tooltip } from 'antd'
+import { Drawer, Layout, Tooltip } from 'antd'
 import { IconPanelLeft, IconPanelRight, IconSearch } from './components/icons'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 // 首屏页面保持同步 import：Dashboard 是默认路由，懒加载只会多一次往返
@@ -28,6 +28,8 @@ import CommandPalette from './components/CommandPalette'
 import { MENU } from './menuConfig'
 import { pushRecentPage } from './recentPages'
 import ZoomControl from './components/ZoomControl'
+import NavFab from './components/NavFab'
+import { BP, useMediaQuery } from './useMediaQuery'
 
 const { Sider, Content } = Layout
 
@@ -36,9 +38,17 @@ export default function App() {
   const loc = useLocation()
   const selected = MENU.some((m) => m.key === loc.pathname) ? loc.pathname : '/'
   const [collapsed, setCollapsed] = useState(false)
+  /** ≤768px 不占页面宽度：侧边栏收进抽屉，由悬浮球打开 */
+  const narrow = useMediaQuery(BP.mdDown)
+  const [navOpen, setNavOpen] = useState(false)
   const [version, setVersion] = useState('')
   /** 全局命令面板（Cmd/Ctrl + K） */
   const [paletteOpen, setPaletteOpen] = useState(false)
+
+  const navigateFromMenu = (key: string): void => {
+    setNavOpen(false)
+    nav(key)
+  }
 
   useEffect(() => {
     // 侧边栏版本号取自后端（exe 打包时注入 git tag；源码运行为 dev）
@@ -64,6 +74,62 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const siderBody = (compact: boolean) => (
+    <>
+      <div className="sider-logo">
+        {compact ? (
+          <Tooltip title="ICPC Workbench" placement="right">
+            <span className="sider-logo-badge">
+              <img src="/favicon.svg" alt="logo" />
+            </span>
+          </Tooltip>
+        ) : (
+          <span className="sider-logo-badge">
+            <img src="/favicon.svg" alt="logo" />
+          </span>
+        )}
+        <span className="sider-logo-text">
+          ICPC Workbench
+          <span className="sider-logo-sub">备赛工作台</span>
+        </span>
+      </div>
+      <SiderMenu selected={selected} collapsed={compact} onNavigate={navigateFromMenu} />
+      <div className="sider-zoom"><ZoomControl kind="global" compact={compact} /></div>
+      <div className="sider-footer">
+        {/* 窄屏抽屉点遮罩即可关闭，也没有「收起成图标栏」这一形态 */}
+        {!narrow && (
+          <button
+            type="button"
+            className="sider-footer-toggle"
+            title={compact ? '展开侧栏' : '收起侧栏'}
+            onClick={() => setCollapsed((c) => !c)}
+          >
+            {compact ? <IconPanelRight size={16} /> : <IconPanelLeft size={16} />}
+          </button>
+        )}
+        {!compact && (
+          <button
+            type="button"
+            className="sider-footer-search"
+            title="全局搜索"
+            onClick={() => {
+              setNavOpen(false)
+              setPaletteOpen(true)
+            }}
+          >
+            <IconSearch size={14} />
+            <span>搜索</span>
+            {!narrow && <kbd>{/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'}</kbd>}
+          </button>
+        )}
+        <span className="sider-footer-version">
+          <span className="sider-footer-dot" />
+          {version || 'local'}
+        </span>
+      </div>
+    </>
+  )
+
   return (
     <Layout style={{ minHeight: 'var(--app-viewport-height)' }}>
       <Reminder />
@@ -71,60 +137,26 @@ export default function App() {
       {/* 全局同步悬浮卡：切到任何页面都能看到「还在同步」，避免用户误以为卡住而退出 */}
       <SyncProgressBadge />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={nav} />
-      <Sider
-        width={198}
-        collapsedWidth={60}
-        collapsed={collapsed}
-        breakpoint="md"
-        onBreakpoint={setCollapsed}
-        className="app-sider"
-      >
-        <div className="sider-logo">
-          {collapsed ? (
-            <Tooltip title="ICPC Workbench" placement="right">
-              <span className="sider-logo-badge">
-                <img src="/favicon.svg" alt="logo" />
-              </span>
-            </Tooltip>
-          ) : (
-            <span className="sider-logo-badge">
-              <img src="/favicon.svg" alt="logo" />
-            </span>
-          )}
-          <span className="sider-logo-text">
-            ICPC Workbench
-            <span className="sider-logo-sub">备赛工作台</span>
-          </span>
-        </div>
-        <SiderMenu selected={selected} collapsed={collapsed} onNavigate={nav} />
-        <div className="sider-zoom"><ZoomControl kind="global" compact={collapsed} /></div>
-        <div className="sider-footer">
-          <button
-            type="button"
-            className="sider-footer-toggle"
-            title={collapsed ? '展开侧栏' : '收起侧栏'}
-            onClick={() => setCollapsed((c) => !c)}
+      {narrow ? (
+        <>
+          {!navOpen && <NavFab onOpen={() => setNavOpen(true)} />}
+          <Drawer
+            placement="left"
+            width={248}
+            open={navOpen}
+            onClose={() => setNavOpen(false)}
+            closable={false}
+            rootClassName="app-nav-drawer"
+            styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
           >
-            {collapsed ? <IconPanelRight size={16} /> : <IconPanelLeft size={16} />}
-          </button>
-          {!collapsed && (
-            <button
-              type="button"
-              className="sider-footer-search"
-              title="全局搜索（Ctrl/⌘ + K）"
-              onClick={() => setPaletteOpen(true)}
-            >
-              <IconSearch size={14} />
-              <span>搜索</span>
-              <kbd>⌘K</kbd>
-            </button>
-          )}
-          <span className="sider-footer-version">
-            <span className="sider-footer-dot" />
-            {version || 'local'}
-          </span>
-        </div>
-      </Sider>
+            {siderBody(false)}
+          </Drawer>
+        </>
+      ) : (
+        <Sider width={198} collapsedWidth={60} collapsed={collapsed} className="app-sider">
+          {siderBody(collapsed)}
+        </Sider>
+      )}
       {/* 内边距与底色统一交给 index.css 的 .app-content（亮色极简版需要更大的留白，
           内联 style 会盖掉主题样式，所以这里不再写死 padding） */}
       <Content className="app-content">

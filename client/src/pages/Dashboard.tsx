@@ -378,6 +378,11 @@ export default function Dashboard() {
     return ordered
   }, [stats, platformOrder])
 
+  // 十个平台里通常只有一两个有数据：全是 0 的卡片只占地方。一条提交都没有时才全部显示，保留排序入口
+  const activePlatforms = orderedPlatforms.filter((p) => p.attempts > 0)
+  const visiblePlatforms = activePlatforms.length > 0 ? activePlatforms : orderedPlatforms
+  const hiddenPlatforms = orderedPlatforms.length - visiblePlatforms.length
+
   /** 当前折叠的模块集合：没有用户记录时用默认折叠集合 */
   const collapsedSet = useMemo(() => new Set<string>(collapsedModules ?? COLLAPSED_BY_DEFAULT), [collapsedModules])
 
@@ -943,8 +948,11 @@ export default function Dashboard() {
         }
         onHeadMouseDown={(e) => handleModuleMouseDown(e, 'platforms')}
       >
+        {hiddenPlatforms > 0 && (
+          <p style={{ margin: '0 0 8px', color: 'var(--text-3)', fontSize: 12 }}>另有 {hiddenPlatforms} 个平台暂无提交，已隐藏。</p>
+        )}
         <div className="platform-card-grid" style={{ userSelect: dragPlatform !== null ? 'none' : undefined }}>
-          {orderedPlatforms.map((p, index) => (
+          {visiblePlatforms.map((p, index) => (
             <div
               key={p.platform}
               className={`platform-stat-card reorder-host${dragPlatform === p.platform ? ' is-dragging' : ''}${p.attempts === 0 ? ' is-empty' : ''}`}
@@ -980,7 +988,7 @@ export default function Dashboard() {
               <ReorderButtons
                 label={platformName(p.platform)}
                 canUp={index > 0}
-                canDown={index < orderedPlatforms.length - 1}
+                canDown={index < visiblePlatforms.length - 1}
                 onMove={(d) => movePlatformCard(p.platform, d)}
                 style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}
               />
@@ -1140,9 +1148,9 @@ export default function Dashboard() {
         extra={
           <Space align="start" wrap>
             <AccountScopePicker value={scope} onChange={setScope} />
-            <Button icon={<IconReset size={14} />} onClick={restoreDefaultLayout}>
-              恢复默认布局
-            </Button>
+            <AntTooltip title="恢复默认布局">
+              <Button type="text" aria-label="恢复默认布局" icon={<IconReset size={14} />} onClick={restoreDefaultLayout} />
+            </AntTooltip>
             {syncButton}
           </Space>
         }

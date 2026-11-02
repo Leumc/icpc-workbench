@@ -216,6 +216,7 @@ export default function Plans() {
     {
       title: '计划',
       dataIndex: 'title',
+      minWidth: 120,
       render: (v: string, r) => <a onClick={() => void openDetail(r.id)}>{v}</a>,
     },
     {
@@ -227,7 +228,8 @@ export default function Plans() {
       responsive: ['md'],
       render: (v: PlanListItem['source']) => sourceTag(v),
     },
-    { title: '周期', width: 210, render: (_v, r) => <span className="mono">{r.start_date} ~ {r.end_date}</span> },
+    // ≤768px 隐藏：窄屏下留给标题，否则标题会被挤成一字一行；周期在详情里仍可见
+    { title: '周期', width: 230, responsive: ['md'], render: (_v, r) => <span className="mono" style={{ whiteSpace: 'nowrap' }}>{r.start_date} ~ {r.end_date}</span> },
     { title: '进度', width: 160, render: (_v, r) => <Progress className="gradient-progress" percent={r.task_count ? Math.round((r.checked_count / r.task_count) * 100) : 0} size="small" /> },
     { title: '任务', dataIndex: 'task_count', width: 70, align: 'right', render: (_v, r) => <span className="mono">{r.checked_count}/{r.task_count}</span> },
     {
@@ -264,7 +266,7 @@ export default function Plans() {
     <div>
       <PageHeader
         title="训练计划"
-        description="AI 生成（需在设置中配置 API Key）；未配置时自动生成模板计划。也可到「设置 → 导出提示词」手动喂给任意 AI。"
+        description="按你的弱项安排每天的练习；未配置 AI 时生成模板计划"
         extra={
           <Space>
           <Button type="primary" icon={<PlusOutlined />} loading={generating} onClick={() => setGenOpen(true)}>

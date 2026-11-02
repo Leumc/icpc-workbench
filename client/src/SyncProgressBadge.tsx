@@ -21,6 +21,7 @@ import { IconChevronDown, IconChevronUp, IconSpinner } from './components/icons'
 import { useSyncProgress } from './syncProgressCore'
 import { elapsedText, heartbeatText, heartbeatTone, jobLineText, modeText, summaryText } from './syncProgress'
 import { platformName } from './ui'
+import { BP, useMediaQuery } from './useMediaQuery'
 
 const COLLAPSED_KEY = 'icpc-sync-badge-collapsed'
 const RUNS_POLL_ACTIVE_MS = 2_000
@@ -131,6 +132,9 @@ export default function SyncProgressBadge() {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [now, setNow] = useState(() => Date.now())
   const ticking = rows.some((r) => r.status === 'running')
+  // 窄屏卡片几乎占满屏宽：抬高一些，给底部的悬浮球和页面操作留位置
+  const narrow = useMediaQuery(BP.mdDown)
+  const bottom = narrow ? 76 : 20
 
   // 已用时每秒走一格；后端任务的进度另有轮询，这里只驱动本地计时
   useEffect(() => {
@@ -178,7 +182,7 @@ export default function SyncProgressBadge() {
           style={{
             position: 'fixed',
             right: 20,
-            bottom: 20,
+            bottom,
             zIndex: 1200,
             display: 'flex',
             alignItems: 'center',
@@ -208,7 +212,7 @@ export default function SyncProgressBadge() {
       style={{
         position: 'fixed',
         right: 20,
-        bottom: 20,
+        bottom,
         zIndex: 1200,
         width: 320,
         maxWidth: 'calc(100vw - 40px)',

@@ -911,7 +911,7 @@ export default function Lists() {
     <div>
       <PageHeader
         title="题单整理"
-        description="导入平台题单（支持洛谷 / Codeforces / AtCoder / 代码源 / 牛客的题号或链接，每行一题），按知识点分类；AI 可读取题单内容结合你的弱项给出练习建议。卡片可拖动左上角手柄调整顺序（也可用卡片上的 ↑↓），点 ✎ 可重命名。"
+        description="导入平台题单、按知识点分类，并结合弱项给出练习建议"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setImportOpen(true)}>
             导入题单

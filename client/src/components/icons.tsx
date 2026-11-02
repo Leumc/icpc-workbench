@@ -115,6 +115,17 @@ export const IconCalendarCheck = (p: LinearIconProps) => (
 )
 
 /** 日历打卡：日历 + 圆点 */
+export const IconChecklist = (p: LinearIconProps) => (
+  <Svg {...p}>
+    <path d="M4 6l1.5 1.5L8 5" />
+    <path d="M4 12l1.5 1.5L8 11" />
+    <path d="M4 18l1.5 1.5L8 17" />
+    <path d="M11.5 6.5H20" />
+    <path d="M11.5 12.5H20" />
+    <path d="M11.5 18.5H20" />
+  </Svg>
+)
+
 export const IconCalendar = (p: LinearIconProps) => (
   <Svg {...p}>
     <rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.6" />

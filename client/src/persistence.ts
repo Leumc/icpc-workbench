@@ -25,11 +25,12 @@ export function writeJson(key: string, value: unknown): void {
   }
 }
 
-export function readFlag(key: string): boolean {
+export function readFlag(key: string, fallback = false): boolean {
   try {
-    return localStorage.getItem(key) === '1'
+    const raw = localStorage.getItem(key)
+    return raw === null ? fallback : raw === '1'
   } catch {
-    return false
+    return fallback
   }
 }
 

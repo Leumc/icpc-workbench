@@ -249,6 +249,7 @@ export default function CalendarPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={16}>
           <Card
+            className="calendar-card"
             title="训练日历"
             extra={
               <span className="calendar-extra">
