@@ -7528,6 +7528,29 @@ body {
     gap: 8px;
   }
 
+  /* 收起时不占列：56px 的窄栏下方全是空白，手机上这一列太贵。切换会话从展开的侧栏进 */
+  .assistant-layout.is-side-collapsed .assistant-side {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    width: auto;
+    padding: 0;
+  }
+
+  .assistant-layout.is-side-collapsed .assistant-side-head {
+    padding: 0;
+  }
+
+  .assistant-layout.is-side-collapsed .assistant-mini-rail {
+    display: none;
+  }
+
+  /* 给浮在左上角的展开按钮留出位置，避免压住第一条消息 */
+  .assistant-layout.is-side-collapsed .assistant-main {
+    padding-top: 36px;
+  }
+
   .assistant-layout:not(.is-side-collapsed) .assistant-side {
     position: absolute;
     inset: 0 auto 0 0;

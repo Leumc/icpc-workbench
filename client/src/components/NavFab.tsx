@@ -29,9 +29,12 @@ export default function NavFab({ onOpen }: { onOpen: () => void }) {
   const [position, setPosition] = useState(readPosition)
   const [dragging, setDragging] = useState<{ x: number; y: number } | null>(null)
   const start = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  /** 刚拖动过：随后的 click 不算点击 */
+  const dragged = useRef(false)
 
   const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>): void => {
     start.current = { x: e.clientX, y: e.clientY, moved: false }
+    dragged.current = false
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
@@ -40,6 +43,7 @@ export default function NavFab({ onOpen }: { onOpen: () => void }) {
     if (!s) return
     if (!s.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) < DRAG_THRESHOLD) return
     s.moved = true
+    dragged.current = true
     setDragging({ x: e.clientX, y: e.clientY })
   }
 
@@ -47,11 +51,7 @@ export default function NavFab({ onOpen }: { onOpen: () => void }) {
     const s = start.current
     start.current = null
     setDragging(null)
-    if (!s) return
-    if (!s.moved) {
-      onOpen()
-      return
-    }
+    if (!s?.moved) return
     const next: FabPosition = {
       side: e.clientX < window.innerWidth / 2 ? 'left' : 'right',
       bottom: Math.round(Math.min(window.innerHeight - SIZE - EDGE, Math.max(EDGE, window.innerHeight - e.clientY - SIZE / 2))),
@@ -85,11 +85,10 @@ export default function NavFab({ onOpen }: { onOpen: () => void }) {
         start.current = null
         setDragging(null)
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onOpen()
-        }
+      // 必须在 click 里打开，不能在 pointerup 里：抬手时打开的话，球随即卸载，浏览器紧接着补发的
+      // click 会落到抽屉的遮罩或菜单项上，抽屉马上又被关掉。键盘 Enter / 空格也会触发 click
+      onClick={() => {
+        if (!dragged.current) onOpen()
       }}
     >
       <MenuOutlined />
