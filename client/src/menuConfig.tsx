@@ -15,6 +15,7 @@ import {
   IconFlag,
   IconRadar,
   IconInfo,
+  IconNotebook,
   IconSliders,
   IconSparkChat,
   IconTag,
@@ -38,6 +39,7 @@ export const MENU: MenuMeta[] = [
   { key: '/plans', icon: <IconChecklist size={17} />, label: '训练计划' },
   { key: '/calendar', icon: <IconCalendar size={17} />, label: '日历打卡' },
   { key: '/reviews', icon: <IconBook size={17} />, label: '复习库' },
+  { key: '/notes', icon: <IconNotebook size={17} />, label: '笔记库' },
   { key: '/contests', icon: <IconFlag size={17} />, label: '赛事中心' },
   { key: '/settings', icon: <IconSliders size={17} />, label: '设置' },
   { key: '/about', icon: <IconInfo size={17} />, label: '关于' },
@@ -58,7 +60,7 @@ export interface MenuGroup {
 /**
  * 三组任务流（UI 优化方案 §4.1，含后续调整）：
  * - 训练：今天做什么、怎么学、怎么练 —— 今日训练 / AI 助手 / 模板库 / 训练计划
- * - 题库：找题、整理、练与复习 —— 题目管理 / 题单整理 / 复习库 / 掌握度地图
+ * - 题库：找题、整理、练与复习 —— 题目管理 / 题单整理 / 复习库 / 笔记库 / 掌握度地图
  * - 赛事：报名参赛 —— 赛事中心（赛时分析已融合进「我参加的」单场弹窗）
  *
  * 与文档表格的两处有意偏差（文档漏了路由，照抄会丢入口）：
@@ -73,7 +75,7 @@ export interface MenuGroup {
  */
 export const MENU_GROUPS: MenuGroup[] = [
   { key: 'training', label: '训练', items: ['/today', '/ai', '/templates', '/plans'] },
-  { key: 'bank', label: '题库', items: ['/problems', '/lists', '/reviews', '/mastery'] },
+  { key: 'bank', label: '题库', items: ['/problems', '/lists', '/reviews', '/notes', '/mastery'] },
   { key: 'contest', label: '赛事', items: ['/contests'] },
 ]
 

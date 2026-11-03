@@ -18,7 +18,20 @@ export interface ProblemNote {
   updatedAt: string
   taskTitle: string | null
   taskDate: string | null
+  planId?: number | null
   planTitle: string | null
+  /** 笔记归属题目（含经任务间接关联的）；只挂在专题等无题目任务上时为 null */
+  problem?: NoteProblemRef | null
+}
+
+/** 笔记 / 复习笔记上带出的题目元信息 */
+export interface NoteProblemRef {
+  id: number
+  platform: string
+  problemKey: string
+  title: string
+  url: string | null
+  difficulty: number | null
 }
 
 /** 编辑中的框：key 只用于 React 列表，uploading 表示文件还在上传 */

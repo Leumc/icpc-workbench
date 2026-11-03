@@ -31,6 +31,8 @@ import { isValidCode } from '../knowledge/taxonomy.ts';
 import { annotateProblemsL1 } from '../knowledge/pipeline.ts';
 import { intentFactor } from '../today/ability.ts';
 import { throttledFetch } from '../net/hostThrottle.ts';
+import { problemPeek } from '../problems/peek.ts';
+import { localToday } from '../dates.ts';
 
 interface ProblemRow {
   id: number;
@@ -458,6 +460,30 @@ export function problemsRoutes(db: Db, fetchFn: typeof fetch = throttledFetch): 
       pageSize,
       hasMore: offset + items.length < total,
     });
+  });
+
+  /**
+   * GET /api/problems/peek?url= | ?id= | ?platform=&key=
+   * 题目速览：点击任意题目链接时弹出的卡片数据（基本信息 + 笔记 / 卡点 / 复习 / 提交 / 训练任务 / 题单）。
+   * 按原题身份聚合镜像题；题库里没有这道题时 found=false，仍按链接匹配训练任务与题单。
+   */
+  r.get('/peek', (req, res) => {
+    const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined);
+    const idRaw = str(req.query.id);
+    const url = str(req.query.url);
+    const platform = str(req.query.platform);
+    const problemKey = str(req.query.key);
+    let problemId: number | undefined;
+    if (idRaw !== undefined) {
+      const n = Number(idRaw);
+      if (!Number.isSafeInteger(n) || n <= 0) return res.status(400).json({ error: 'id 非法' });
+      problemId = n;
+    }
+    if (url !== undefined && url.length > 2048) return res.status(400).json({ error: '链接过长' });
+    if (problemId === undefined && url === undefined && (platform === undefined || problemKey === undefined)) {
+      return res.status(400).json({ error: '需要 id、url 或 platform+key 之一' });
+    }
+    res.json(problemPeek(db, DEFAULT_USER_ID, { problemId, url, platform, problemKey }, localToday()));
   });
 
   /**

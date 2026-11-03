@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent as ReactMouseEvent } from 'react'
-import { Alert, App as AntdApp, Button, Card, Dropdown, Input, Modal, Select, Spin, Tag, Tooltip } from 'antd'
+import { Alert, App as AntdApp, Button, Card, Dropdown, Input, Modal, Select, Space, Spin, Tag, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
 import type { TextAreaRef } from 'antd/es/input/TextArea'
 import {
@@ -43,6 +43,7 @@ import type { ParticipatedContest, PlanListItem } from '../types'
 import type { AbilityLevelDetail, AiProviderView, ModelCaps } from '../../../shared/src/index.ts'
 import { getAppZoom } from '../appZoom'
 import ZoomControl from '../components/ZoomControl'
+import AiCustomPromptsCard from '../components/AiCustomPromptsCard'
 import PageHeader from '../components/PageHeader'
 // SessionMiniPanel removed: collapsed sidebar now shows session avatars directly
 import {
@@ -131,13 +132,11 @@ function fileToDataUrl(f: File): Promise<string> {
   })
 }
 
-// ---------- 左侧栏折叠 ----------
-
-/** 折叠状态持久化：切页/刷新后保持用户的选择（localStorage 不可用时仅本次会话生效） */
-const SIDE_COLLAPSED_KEY = 'icpc-assistant-side-collapsed'
-
 /** 右侧对话导航的收起状态：同样持久化，默认展开 */
 const TOC_HIDDEN_KEY = 'icpc-assistant-toc-hidden'
+
+/** 右侧会话侧栏的收起状态：持久化，默认展开（v2：侧栏改到右侧后换新键，旧的收起偏好不再沿用） */
+const SIDE_COLLAPSED_KEY = 'icpc-assistant-side-collapsed-v2'
 
 // ---------- 文件上传分流（模块级：组件体内定义会让流式渲染每帧重建这些数组/闭包） ----------
 
@@ -183,6 +182,11 @@ const isDocumentFile = (f: File): boolean => {
   return DOCUMENT_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
+function readSideCollapsed(): boolean {
+  // 窄屏默认收起：右侧栏推开后对话区只剩很窄一条，打开页面应先看到对话
+  return readFlag(SIDE_COLLAPSED_KEY) || window.matchMedia(BP.mdDown).matches
+}
+
 function readTocHidden(): boolean {
   return readFlag(TOC_HIDDEN_KEY)
 }
@@ -207,11 +211,6 @@ function turnExcerpt(m: ChatMsg): string {
  * 连续点上下移时不会堆出一摞提示（与 SiderMenu 的 msgKeyRef 思路一致，但这里更简单）。
  */
 const SESSION_ORDER_MSG_KEY = 'assistant-session-order'
-
-function readSideCollapsed(): boolean {
-  // 窄屏默认收起：展开的侧栏会盖住对话区，打开页面应先看到对话
-  return readFlag(SIDE_COLLAPSED_KEY) || window.matchMedia(BP.mdDown).matches
-}
 
 /** 能力值卡片里的 rating 证据行：没有合格锚点、也没有分差趋势时返回 null（不占行） */
 function ratingEvidenceLine(detail?: AbilityLevelDetail): string | null {
@@ -249,17 +248,6 @@ export default function Assistant() {
 
   // 置顶会话浮动到列表前部（组内保持手动顺序）；store 数组不动，拖拽/撤销仍按手动顺序运作
   const orderedSessions = useMemo(() => pinFirstOrder(sessions), [sessions])
-  const miniSessions = useMemo(
-    () =>
-      orderedSessions.map((s) => ({
-        id: s.id,
-        title: s.title,
-        pinned: s.pinned,
-        turns: s.messages.length,
-        streaming: sendingIds.has(s.id),
-      })),
-    [orderedSessions, sendingIds],
-  )
 
   /**
    * `/` 快捷指令的候选/高亮/忽略状态已随输入区一起移入 Composer：
@@ -333,7 +321,10 @@ export default function Assistant() {
   const [toolStatus, setToolStatus] = useState<{ sessionId: string; text: string } | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
-  /** 左侧栏折叠：会话记录/上下文/能力值收成一条窄栏，把宽度让给对话区 */
+  /**
+   * 会话侧栏（会话记录 / 对话上下文 / 能力值）：在对话区右侧，展开时从右边推开对话区，
+   * 收起后完全不占宽度（对话区顶到两边）。开关按钮在页头右侧，与侧栏同侧。默认展开。
+   */
   const [sideCollapsed, setSideCollapsed] = useState(readSideCollapsed)
   /** 拖拽源 id（ref 即时读写，不依赖 state 异步更新） */
   const dragIdRef = useRef<string | null>(null)
@@ -542,7 +533,6 @@ export default function Assistant() {
   /** 折叠/展开左侧栏（fold/unfold 图标与全局侧边栏保持一致） */
   const toggleSideCollapsed = useCallback(() => {
     setSideCollapsed((c) => {
-      // localStorage 不可用时仅本次会话生效
       writeFlag(SIDE_COLLAPSED_KEY, !c)
       return !c
     })
@@ -1752,7 +1742,22 @@ export default function Assistant() {
       <PageHeader
         title="AI 助手"
         description="与 AI 教练自由对话：解答算法问题、调试代码、解读刷题数据；关联计划 / 题单 / 比赛后 AI 可直接动手。"
-        extra={<ZoomControl kind="reply" />}
+        extra={
+          <Space size={8} wrap>
+            <Button
+              icon={sideCollapsed ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+              onClick={toggleSideCollapsed}
+              aria-expanded={!sideCollapsed}
+              className="assistant-side-open"
+              title="会话记录、对话上下文与能力值"
+            >
+              <span className="assistant-side-open-text">
+                会话：{orderedSessions.find((x) => x.id === activeId)?.title || '新会话'}
+              </span>
+            </Button>
+            <ZoomControl kind="reply" />
+          </Space>
+        }
       />
       {needConfig && (
         <Alert
@@ -1769,45 +1774,15 @@ export default function Assistant() {
         />
       )}
       <div className={`assistant-layout${sideCollapsed ? ' is-side-collapsed' : ''}`}>
-        <div className="assistant-side">
-          {/* 折叠按钮：收起后本栏只留这条窄边，把宽度让给对话区 */}
+        {/* 侧栏在 DOM 里先于对话区，靠 CSS order 排到右侧 */}
+        <div className="assistant-side" aria-hidden={sideCollapsed || undefined}>
           <div className="assistant-side-head">
-            <Tooltip title={sideCollapsed ? '展开侧栏' : '收起侧栏'} placement="right">
-              <button
-                type="button"
-                className="assistant-side-toggle"
-                aria-label={sideCollapsed ? '展开侧栏' : '收起侧栏'}
-                tabIndex={-1}
-                aria-expanded={!sideCollapsed}
-                onClick={toggleSideCollapsed}
-              >
-                {sideCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              </button>
-            </Tooltip>
-          </div>
-          {/* 折叠态迷你栏（P3-5）：每个会话一个小头像图标，点击直接切换；
-              不再使用鼠标悬停展开浮层，所有会话一目了然。 */}
-          <div className="assistant-mini-rail">
-            {miniSessions.map((s) => (
-              <Tooltip key={s.id} title={s.title || '新会话'} placement="right">
-                <button
-                  type="button"
-                  className={`mini-rail-avatar${s.id === activeId ? ' is-active' : ''}`}
-                  aria-label={`切换到会话：${s.title || '新会话'}`}
-                  onClick={() => switchToSession(s.id)}
-                  tabIndex={-1}
-                >
-                  {/* Array.from 按 Unicode 码点取首字符：slice(0,1) 遇 emoji/代理对会渲染半个乱码 */}
-                  {Array.from(s.title.trim())[0] ?? '新'}
-                  {s.streaming && <LoadingOutlined className="mini-rail-stream" />}
-                </button>
-              </Tooltip>
-            ))}
-            <Tooltip title="新建会话" placement="right">
-              <button type="button" className="mini-rail-new" aria-label="新建会话" onClick={createNewSession} tabIndex={-1}>
-                <PlusOutlined />
-              </button>
-            </Tooltip>
+            <span className="assistant-side-title">会话与上下文</span>
+            {/* 用原生 title 而不是 antd Tooltip：点了之后按钮随侧栏一起隐藏，收不到 mouseleave，
+                Tooltip 会一直卡在界面上 */}
+            <button type="button" className="assistant-side-toggle" aria-label="收起侧栏" title="收起侧栏" onClick={toggleSideCollapsed}>
+              <MenuUnfoldOutlined />
+            </button>
           </div>
           {/* 会话记录 */}
           <Card
@@ -1940,6 +1915,9 @@ export default function Assistant() {
               </Tooltip>
             </div>
           </Card>
+
+          {/* 追加 AI 提示词（与设置页同一份数据）：默认收起，提示词可能很长 */}
+          <AiCustomPromptsCard collapsible style={{ marginTop: 12 }} />
 
           {/* 估算能力值 */}
           <Card

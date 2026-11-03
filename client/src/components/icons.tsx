@@ -142,6 +142,14 @@ export const IconBook = (p: LinearIconProps) => (
   </Svg>
 )
 
+/** 笔记库：带书签的笔记本 */
+export const IconNotebook = (p: LinearIconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="3" width="14.4" height="18" rx="2.4" />
+    <path d="M8.6 3v18M11.8 8.2h4.4M11.8 11.6h4.4M11.8 15h2.6" />
+  </Svg>
+)
+
 /** 赛事中心：旗帜 */
 export const IconFlag = (p: LinearIconProps) => (
   <Svg {...p}>

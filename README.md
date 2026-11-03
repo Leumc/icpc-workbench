@@ -66,6 +66,8 @@
 - **日历打卡**：月历查看每天训练任务、跳转做题链接、逐任务打卡；打卡数据与计划页联动；连续打卡统计。当天**到期复习**也会并入展示（月历格子「复习 N」角标、当天面板独立复习区，可跳题与就地反馈），但复习**不计入打卡与连续天数**——格子上的完成度仍然只统计计划任务
 - **打卡提醒**：设置页配置每日提醒时间，应用打开期间到点若当天仍有未打卡任务，弹浏览器系统通知 + 页面内通知，点击直达日历；赛前提醒可配置开赛前 N 分钟通知（每场一次，点击直达赛事中心）
 - **软件更新**：双通道检测（正式版 + GitHub 最新提交构建）+ 应用内一键自更新（更新驱动挂在全局 Provider，发起更新后切到别的模块也不会中断下载/替换流程；刷新页面自动恢复更新进度）
+- **笔记库**：侧栏「题库 → 笔记库」把写过笔记的题目按题归档——题目笔记、打卡笔记与复习库里的复习笔记汇总在一起；可搜题号/题名/笔记正文/任务，按标注、平台、来源（题目笔记 / 复习笔记）筛选，按最近更新、笔记条数或题号排序；右侧直接看全文、编辑、再写一条，复习笔记也能就地编辑。支持深链 `/notes?problem=<id>` / `?task=<id>` / `?note=<id>`。
+- **题目速览**：在工作台里点击**任何**题目链接（各页面表格、训练计划任务、AI 回复与笔记里的 Markdown 链接、模板例题……）都会先弹出速览卡片，而不是直接跳到 OJ：显示平台、题号、难度、知识点标签、做题状态，以及笔记 / 卡点 / 复习 / 提交 / 训练任务（含 AI 给的提示）/ 所在题单的一行摘要；点摘要行打开二级弹窗看完整内容（笔记可直接编辑、复习日志、全部提交等），二级弹窗底部可跳到笔记库、复习库、题目管理、训练计划、题单整理等对应页面。洛谷 CF/AT 镜像与原题的记录自动合并；题库里还没有的题也会按链接匹配训练任务和题单，并可一键加入复习。卡片上的「打开题目」才真正跳转；`Ctrl` / `⌘` + 点击题目链接可跳过速览直接打开。
 - **Web 挂件**：`http://localhost:3001/widget` 零依赖单页（Express 直接服务），常驻小窗展示当天任务、连续打卡徽标，可写笔记打卡/跳转做题
 - **MCP 接口（外部 AI Agent 接入）**：内置 MCP 服务器（`http://127.0.0.1:3001/mcp`，Streamable HTTP），Claude Desktop / Cursor / Claude Code 等外部 agent 应用可直连工作台——查统计画像、搜题、管理训练计划与题单、打卡、触发同步、导出汇总，39 个工具与 REST API 一一映射（见「MCP 接口」章节）
 
@@ -368,7 +370,9 @@ GET  /api/checkins?month=YYYY-MM  # 月打卡视图
 GET  /api/checkins/date/:date     # 当天任务（Web 挂件复用）
 GET  /api/checkins/streak         # 连续打卡统计（current/longest/totalDays）
 POST /api/checkins { taskId, note: { blocks | content, labels? } } # 写笔记并打卡（同一事务；打卡后不可取消）
-GET  /api/notes?problemId=|taskId= # 题目笔记列表（一题多条）
+GET  /api/notes?problemId=|taskId= # 题目笔记列表（一题多条；problemId 加 &mirrors=1 连同洛谷镜像题）
+GET  /api/notes/library?q=&platform=&label=&source= # 笔记库：全部题目笔记 + 复习笔记，可搜正文、按标注/平台/来源筛选
+GET  /api/problems/peek?url=|id= # 题目速览：基本信息 + 笔记/卡点/复习/提交/训练任务/题单（按原题身份合并镜像）
 POST /api/uploads/files?name=     # 上传笔记附件（字节流，下载时强制 attachment）
 POST /api/notes { problemId|taskId, blocks | content, labels? } # 新增笔记 | PATCH /api/notes/:id 编辑 | DELETE /api/notes/:id 删除
 GET  /api/problems/bank/runs      # 进行中的题库拉取进度

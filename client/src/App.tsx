@@ -17,6 +17,7 @@ const Reviews = lazy(() => import('./pages/Reviews'))
 const Contests = lazy(() => import('./pages/Contests'))
 const Templates = lazy(() => import('./pages/Templates'))
 const Mastery = lazy(() => import('./pages/Mastery'))
+const Notes = lazy(() => import('./pages/Notes'))
 import PageSkeleton from './components/PageSkeleton'
 import Reminder from './Reminder'
 import ContestReminder from './ContestReminder'
@@ -29,6 +30,7 @@ import { MENU } from './menuConfig'
 import { pushRecentPage } from './recentPages'
 import ZoomControl from './components/ZoomControl'
 import NavFab from './components/NavFab'
+import ProblemPeekHost from './components/ProblemPeek'
 import { BP, useMediaQuery } from './useMediaQuery'
 
 const { Sider, Content } = Layout
@@ -137,6 +139,8 @@ export default function App() {
       {/* 全局同步悬浮卡：切到任何页面都能看到「还在同步」，避免用户误以为卡住而退出 */}
       <SyncProgressBadge />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={nav} />
+      {/* 题目速览：任何题目链接被点击时由全局拦截唤起（见 problemPeek.ts） */}
+      <ProblemPeekHost />
       {narrow ? (
         <>
           {!navOpen && <NavFab onOpen={() => setNavOpen(true)} />}
@@ -175,6 +179,7 @@ export default function App() {
               <Route path="/plans" element={<Plans />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/reviews" element={<Reviews />} />
+              <Route path="/notes" element={<Notes />} />
               <Route path="/contests" element={<Contests />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/about" element={<About />} />

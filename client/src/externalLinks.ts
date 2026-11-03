@@ -3,7 +3,10 @@
  * - 浏览器环境：保持原生 <a target="_blank"> / window.open 行为
  * - 桌面壳（Tauri WebView）：target="_blank" 的新窗口请求被默认策略吞掉，
  *   需拦截后委托 opener 插件交系统浏览器打开
+ * - 题目链接：两种环境都先弹题目速览（见 problemPeek.ts），由卡片上的按钮再真正打开
  */
+
+import { openProblemPeek, peekRequestFromClick } from './problemPeek'
 
 type TauriInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>
 
@@ -36,12 +39,24 @@ export async function openExternal(url: string): Promise<void> {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-/** 桌面壳内全局接管外链点击：所有指向 http(s) 的 <a>（含 Markdown 渲染的）统一走系统浏览器 */
+/**
+ * 全局接管链接点击（捕获阶段，早于 React 与各页面自己的处理）：
+ * 1. 指向题目页的链接 → 先弹题目速览卡片（problemPeek.ts），浏览器与桌面壳都生效；
+ * 2. 桌面壳内其余 http(s) 外链 → 统一走系统浏览器（含 Markdown 渲染的链接）。
+ */
 export function setupExternalLinks(): void {
-  if (!isTauriShell()) return
+  if (typeof document === 'undefined') return
+  const shell = isTauriShell()
   document.addEventListener(
     'click',
     (e) => {
+      const peek = peekRequestFromClick(e, window.location.href)
+      if (peek) {
+        e.preventDefault()
+        openProblemPeek(peek)
+        return
+      }
+      if (!shell) return
       if (e.button !== 0 || e.defaultPrevented) return
       const target = e.target as Element | null
       const anchor = target?.closest?.('a[href]')

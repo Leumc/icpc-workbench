@@ -1110,7 +1110,7 @@ export default function Problems() {
       sortOrder: sorterOrderOf(sort, 'problem_key'),
       // 题号是「形状各异」的字符串（P1001 / abc321_a / 1919C），服务端按长度+字典序近似自然序
       showSorterTooltip: { title: sortTooltip('题号', '题号按自然序，P2 排在 P1001 之前') },
-      render: (v: string, r) => (r.url ? <a className="mono" href={r.url} target="_blank" rel="noreferrer">{v}</a> : <span className="mono">{v}</span>),
+      render: (v: string, r) => (r.url ? <a className="mono" href={r.url} data-problem-id={r.id} target="_blank" rel="noreferrer">{v}</a> : <span className="mono">{v}</span>),
     },
     {
       title: '标题',
@@ -1119,7 +1119,7 @@ export default function Problems() {
       sorter: true,
       sortOrder: sorterOrderOf(sort, 'title'),
       showSorterTooltip: { title: sortTooltip('标题') },
-      render: (v: string, r) => (r.url ? <a href={r.url} target="_blank" rel="noreferrer">{v}</a> : v),
+      render: (v: string, r) => (r.url ? <a href={r.url} data-problem-id={r.id} target="_blank" rel="noreferrer">{v}</a> : v),
     },
     {
       title: '难度',

@@ -7,56 +7,22 @@ import {
   parseNoteBody,
   parseNoteInput,
   parseNoteLabels,
-  readNoteBlocks,
 } from '../notes/problemNotes.ts';
+import { mirrorProblemIds, NOTE_SELECT, notesForProblems, toApiNote, utcToIso, type NoteRow } from '../notes/noteQuery.ts';
+import { PLATFORMS } from '../../../shared/src/index.ts';
 
-interface NoteRow {
-  id: number;
-  problem_id: number | null;
-  task_id: number | null;
-  labels: string;
-  content: string;
-  blocks: string | null;
-  created_at: string;
-  updated_at: string;
-  task_title: string | null;
-  task_date: string | null;
-  plan_title: string | null;
+/** 笔记库单次最多返回的条数（题目笔记、复习笔记各自计） */
+const LIBRARY_LIMIT = 1000;
+
+interface ReviewNoteEntry {
+  reviewItemId: number;
+  note: string;
+  stage: number;
+  addedAt: string;
+  lastReviewedAt: string | null;
+  nextDueOn: string;
+  problem: { id: number; platform: string; problemKey: string; title: string; url: string | null; difficulty: number | null };
 }
-
-/** datetime('now') 产出无时区的 UTC 文本，转成 ISO 后前端才能按本地时区显示 */
-const utcToIso = (s: string): string => `${s.replace(' ', 'T')}Z`;
-
-function toApiNote(r: NoteRow) {
-  let labels: string[] = [];
-  try {
-    const parsed = JSON.parse(r.labels) as unknown;
-    if (Array.isArray(parsed)) labels = parsed.filter((l): l is string => typeof l === 'string');
-  } catch {
-    /* 标注损坏不该让正文也读不出来 */
-  }
-  return {
-    id: r.id,
-    problemId: r.problem_id,
-    taskId: r.task_id,
-    labels,
-    content: r.content,
-    blocks: readNoteBlocks(r.blocks, r.content),
-    createdAt: utcToIso(r.created_at),
-    updatedAt: utcToIso(r.updated_at),
-    taskTitle: r.task_title,
-    taskDate: r.task_date,
-    planTitle: r.plan_title,
-  };
-}
-
-const NOTE_SELECT = `
-  SELECT n.id, COALESCE(n.problem_id, t.problem_id) AS problem_id, n.task_id, n.labels, n.content, n.blocks,
-         n.created_at, n.updated_at, t.title AS task_title, t.task_date, pl.title AS plan_title
-    FROM problem_notes n
-    LEFT JOIN plan_tasks t ON t.id = n.task_id
-    LEFT JOIN plans pl ON pl.id = t.plan_id
-`;
 
 const positiveId = (v: unknown): number | null => {
   const n = Number(v);
@@ -77,11 +43,110 @@ export function notesRoutes(db: Db): Router {
     if ((problemId === null) === (taskId === null)) {
       return res.status(400).json({ error: '需要且只能指定 problemId 或 taskId 之一' });
     }
+    // mirrors=1：连同洛谷 CF/AT 镜像 ↔ 原题的笔记一起取（题目速览按原题身份汇总）
+    if (problemId !== null && req.query.mirrors === '1') {
+      const ids = mirrorProblemIds(db, problemId);
+      return res.json({ items: notesForProblems(db, DEFAULT_USER_ID, ids.length > 0 ? ids : [problemId]) });
+    }
     const where = problemId !== null ? 'COALESCE(n.problem_id, t.problem_id) = ?' : 'n.task_id = ?';
     const rows = db
       .prepare(`${NOTE_SELECT} WHERE n.user_id = ? AND ${where} ORDER BY n.id DESC`)
       .all(DEFAULT_USER_ID, problemId ?? taskId) as unknown as NoteRow[];
     res.json({ items: rows.map(toApiNote) });
+  });
+
+  /**
+   * GET /api/notes/library?q=&platform=&label=&source=all|problem|review
+   * 笔记库：全部题目笔记（含打卡笔记）+ 复习库里写过的复习笔记，按最近更新倒序。
+   * - q：题号 / 题名 / 笔记正文 / 任务与计划标题，字面量匹配（% 与 _ 不当通配符）
+   * - label：只看带该标注的题目笔记（复习笔记没有标注，指定 label 时不返回）
+   * - labels：当前用户所有在用标注及条数（不受过滤影响，供筛选下拉）
+   * 个人笔记量级有限，单次最多回 LIBRARY_LIMIT 条，超出时 truncated=true 提示收窄条件。
+   */
+  r.get('/library', (req, res) => {
+    const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+    const q = str(req.query.q).slice(0, 200);
+    const platform = str(req.query.platform);
+    const label = str(req.query.label);
+    const source = str(req.query.source) || 'all';
+    if (platform && !PLATFORMS.some((p) => p.id === platform)) {
+      return res.status(400).json({ error: `platform 非法: ${platform}` });
+    }
+    if (!['all', 'problem', 'review'].includes(source)) {
+      return res.status(400).json({ error: 'source 需为 all / problem / review' });
+    }
+    const like = q ? `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+
+    let notes: ReturnType<typeof toApiNote>[] = [];
+    let truncated = false;
+    if (source !== 'review') {
+      let where = 'n.user_id = ?';
+      const params: Array<string | number> = [DEFAULT_USER_ID];
+      if (like) {
+        where += ` AND (n.content LIKE ? ESCAPE '\\' OR np.title LIKE ? ESCAPE '\\' OR np.problem_key LIKE ? ESCAPE '\\'
+                    OR t.title LIKE ? ESCAPE '\\' OR pl.title LIKE ? ESCAPE '\\')`;
+        params.push(like, like, like, like, like);
+      }
+      if (platform) {
+        where += ' AND np.platform = ?';
+        params.push(platform);
+      }
+      if (label) {
+        where += ' AND json_valid(n.labels) AND EXISTS (SELECT 1 FROM json_each(n.labels) je WHERE je.value = ?)';
+        params.push(label);
+      }
+      const rows = db
+        .prepare(`${NOTE_SELECT} WHERE ${where} ORDER BY n.updated_at DESC, n.id DESC LIMIT ?`)
+        .all(...params, LIBRARY_LIMIT + 1) as unknown as NoteRow[];
+      truncated = rows.length > LIBRARY_LIMIT;
+      notes = rows.slice(0, LIBRARY_LIMIT).map(toApiNote);
+    }
+
+    let reviewNotes: ReviewNoteEntry[] = [];
+    if (source !== 'problem' && !label) {
+      let where = "ri.user_id = ? AND ri.note IS NOT NULL AND trim(ri.note) <> ''";
+      const params: Array<string | number> = [DEFAULT_USER_ID];
+      if (like) {
+        where += ` AND (ri.note LIKE ? ESCAPE '\\' OR p.title LIKE ? ESCAPE '\\' OR p.problem_key LIKE ? ESCAPE '\\')`;
+        params.push(like, like, like);
+      }
+      if (platform) {
+        where += ' AND p.platform = ?';
+        params.push(platform);
+      }
+      const rows = db
+        .prepare(
+          `SELECT ri.id, ri.note, ri.stage, ri.added_at, ri.last_reviewed_at, ri.next_due_on,
+                  p.id AS problem_id, p.platform, p.problem_key, p.title, p.url, p.difficulty
+             FROM review_items ri JOIN problems p ON p.id = ri.problem_id
+            WHERE ${where}
+            ORDER BY COALESCE(ri.last_reviewed_at, ri.added_at) DESC, ri.id DESC LIMIT ?`,
+        )
+        .all(...params, LIBRARY_LIMIT + 1) as Array<{
+        id: number; note: string; stage: number; added_at: string; last_reviewed_at: string | null; next_due_on: string;
+        problem_id: number; platform: string; problem_key: string; title: string; url: string | null; difficulty: number | null;
+      }>;
+      truncated ||= rows.length > LIBRARY_LIMIT;
+      reviewNotes = rows.slice(0, LIBRARY_LIMIT).map((r) => ({
+        reviewItemId: r.id,
+        note: r.note,
+        stage: r.stage,
+        addedAt: utcToIso(r.added_at),
+        lastReviewedAt: r.last_reviewed_at,
+        nextDueOn: r.next_due_on,
+        problem: { id: r.problem_id, platform: r.platform, problemKey: r.problem_key, title: r.title, url: r.url, difficulty: r.difficulty },
+      }));
+    }
+
+    const labels = db
+      .prepare(
+        `SELECT je.value AS label, COUNT(*) AS count
+           FROM problem_notes n, json_each(n.labels) je
+          WHERE n.user_id = ? AND json_valid(n.labels) AND je.type = 'text'
+          GROUP BY je.value ORDER BY count DESC, je.value`,
+      )
+      .all(DEFAULT_USER_ID) as Array<{ label: string; count: number }>;
+    res.json({ notes, reviewNotes, labels, truncated });
   });
 
   // POST /api/notes  body: { problemId | taskId, blocks | content, labels? } → 新增一条笔记（不改变打卡状态）

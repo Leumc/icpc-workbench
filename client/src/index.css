@@ -4671,26 +4671,80 @@ html.app-hidden *::after {
 }
 
 /* ---------- AI 助手页 / 题单整理 ---------- */
+/* 页面铺满视口高度：页头 / 未配置提示按内容取高，对话区吃掉剩下的全部高度，
+   不再用「视口 − 固定像素」估算（估多了下方留一大块空白，估少了整页出滚动条）。
+   32px = 内容区上内边距 20 + 下内边距 12（窄屏为 16 + 16）。 */
+.app-content:has([data-ai-page]) {
+  padding-bottom: 12px;
+}
+
+[data-ai-page] {
+  display: flex;
+  flex-direction: column;
+  height: calc(var(--app-viewport-height) - 32px);
+  min-height: 460px;
+}
+
 .assistant-layout {
   display: flex;
-  gap: 16px;
-  height: calc(var(--app-viewport-height) - 170px);
-  min-height: 420px;
+  flex: 1;
+  min-height: 0;
 }
 
+/* 会话侧栏：在对话区右侧占一列，展开时从右边推开对话区，收起时宽度归零（不留窄栏）。
+   DOM 顺序在对话区之前，用 order 排到右边。 */
 .assistant-side {
-  width: 260px;
-  flex-shrink: 0;
+  order: 2;
+  flex: 0 0 auto;
+  width: 280px;
+  margin-left: 16px;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width var(--dur-2) var(--ease-standard);
+  transition:
+    width var(--dur-3) var(--ease-standard),
+    margin-left var(--dur-3) var(--ease-standard),
+    opacity var(--dur-3) var(--ease-standard),
+    visibility var(--dur-3) var(--ease-standard);
 }
 
-/* 侧栏顶部的折叠按钮（样式与全局侧边栏的 sider-footer-toggle 保持一致） */
+/* 内层固定宽度：宽度动画时卡片不跟着被挤压换行，而是被裁切着滑入 / 滑出 */
+.assistant-side > * {
+  width: 280px;
+}
+
+.assistant-layout.is-side-collapsed .assistant-side {
+  width: 0;
+  margin-left: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* 窄屏：展开的侧栏占满整行（对话区被推出视野），收起后对话区全宽 */
+@media (max-width: 768px) {
+  .assistant-side,
+  .assistant-side > * {
+    width: 100%;
+  }
+  .assistant-side {
+    margin-left: 0;
+  }
+  .assistant-layout:not(.is-side-collapsed) .assistant-main {
+    display: none;
+  }
+}
+
 .assistant-side-head {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0 2px 10px;
+}
+
+.assistant-side-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
 }
 
 .assistant-side-toggle {
@@ -4717,113 +4771,20 @@ html.app-hidden *::after {
   border-color: var(--line);
 }
 
-/* 折叠态：56px 迷你栏。overflow 从 hidden 改为 visible —— 会话浮层是绝对定位的，
-   藏在滚动容器里会被裁掉。 */
-.assistant-layout.is-side-collapsed .assistant-side {
-  width: 56px;
-  overflow: visible;
-  padding: 0 6px;
+/* 页头「会话：xxx」按钮：会话名过长时截断 */
+.assistant-side-open-text {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
-.assistant-layout.is-side-collapsed .assistant-side-head {
-  justify-content: center;
-  padding: 0 0 8px;
-}
-
-/* 收起后按钮独自漂在窄栏里，给个边框底色保证它仍然像"可以点" */
-.assistant-layout.is-side-collapsed .assistant-side-toggle {
-  border-color: var(--line);
-  background: var(--surface, var(--bg-elevated));
-}
-
-/* 折叠态迷你栏整体容器：给窄边加统一卡片底，避免按钮像"浮在空中" */
-.assistant-layout.is-side-collapsed .assistant-mini-rail {
-  padding: 12px 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-/* 折叠后：会话记录/上下文/能力值整体让位给对话区，但保留迷你栏 */
-.assistant-layout.is-side-collapsed .assistant-side > *:not(.assistant-side-head):not(.assistant-mini-rail) {
-  display: none;
-}
-
-/* ---------- 折叠态迷你栏：每个会话一个头像图标，点击直接切换 ---------- */
-
-.assistant-mini-rail {
-  display: none;
-}
-
-.assistant-layout.is-side-collapsed .assistant-mini-rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  padding: 10px 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.mini-rail-avatar {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color var(--dur-2) var(--ease-standard), color var(--dur-2) var(--ease-standard), background var(--dur-2) var(--ease-standard);
-}
-
-.mini-rail-avatar:hover,
-.mini-rail-avatar.is-active {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-soft);
-}
-
-/* 正在流式生成：右下角转圈 */
-.mini-rail-stream {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  padding: 2px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--brand);
-  font-size: 10px;
-}
-
-.mini-rail-new {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border: 1px dashed var(--item-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-3);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color var(--dur-2) var(--ease-standard), color var(--dur-2) var(--ease-standard);
-}
-
-.mini-rail-new:hover {
-  border-color: var(--brand);
-  color: var(--brand);
+@media (max-width: 640px) {
+  .assistant-side-open-text {
+    max-width: 120px;
+  }
 }
 
 /* ---------- 输入框 `/` 快捷指令菜单（P3-5） ---------- */
@@ -7521,48 +7482,432 @@ body {
   width: min(248px, 80vw) !important;
 }
 
-/* ---------- 窄屏 AI 助手：会话侧栏浮在对话区上，不再和对话区抢宽度 ---------- */
-@media (max-width: 768px) {
-  .assistant-layout {
-    position: relative;
-    gap: 8px;
-  }
-
-  /* 收起时不占列：56px 的窄栏下方全是空白，手机上这一列太贵。切换会话从展开的侧栏进 */
-  .assistant-layout.is-side-collapsed .assistant-side {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 20;
-    width: auto;
-    padding: 0;
-  }
-
-  .assistant-layout.is-side-collapsed .assistant-side-head {
-    padding: 0;
-  }
-
-  .assistant-layout.is-side-collapsed .assistant-mini-rail {
-    display: none;
-  }
-
-  /* 给浮在左上角的展开按钮留出位置，避免压住第一条消息 */
-  .assistant-layout.is-side-collapsed .assistant-main {
-    padding-top: 36px;
-  }
-
-  .assistant-layout:not(.is-side-collapsed) .assistant-side {
-    position: absolute;
-    inset: 0 auto 0 0;
-    z-index: 20;
-    width: min(300px, 100%);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-}
 
 /* AI 来源标签：通用 .ant-tag 底色写在后面、会盖掉实心底，亮色下白字压浅灰几乎看不见 */
 .ant-tag.ai-tag-shimmer {
   background: var(--brand-fill) !important;
+}
+
+/* ============================================================
+   题目速览（components/ProblemPeek.tsx）
+   一级：题目基本信息 + 每类关联数据一行摘要；二级：完整内容
+   ============================================================ */
+.problem-peek-kicker {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+}
+.problem-peek-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.problem-peek-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.problem-peek-key {
+  color: var(--text-2);
+  font-size: 13px;
+}
+.problem-peek-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.problem-peek-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.problem-peek-mirrors {
+  overflow-wrap: anywhere;
+}
+.problem-peek-alert {
+  margin-top: 2px;
+}
+.problem-peek-rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.problem-peek-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.problem-peek-row + .problem-peek-row {
+  border-top: 1px solid var(--line-soft);
+}
+.problem-peek-row-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px 86px minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-2) var(--ease-standard);
+}
+.problem-peek-row-main:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+.problem-peek-row-main:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+.problem-peek-row-main:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.problem-peek-row-icon {
+  color: var(--brand);
+  display: inline-flex;
+}
+.problem-peek-row.is-empty .problem-peek-row-icon {
+  color: var(--text-3);
+}
+.problem-peek-row-label {
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.problem-peek-row-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+.problem-peek-row-summary {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.problem-peek-row.is-empty .problem-peek-row-summary {
+  color: var(--text-3);
+}
+.problem-peek-row-chevron {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.problem-peek-row-action {
+  flex: none;
+  padding-right: 12px;
+}
+.problem-peek-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.problem-peek-hint {
+  font-size: 12px;
+}
+.peek-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.peek-kv-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  font-size: 13px;
+}
+.peek-kv-grid > span {
+  color: var(--text-3);
+}
+.peek-kv-grid > b {
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.peek-task-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+.peek-task-note-label {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+@media (max-width: 640px) {
+  .problem-peek-row-main {
+    grid-template-columns: 18px minmax(0, 1fr) 12px;
+    grid-template-areas: 'icon label chev' 'icon summary chev';
+    row-gap: 2px;
+  }
+  .problem-peek-row-icon { grid-area: icon; }
+  .problem-peek-row-label { grid-area: label; }
+  .problem-peek-row-summary { grid-area: summary; white-space: normal; }
+  .problem-peek-row-chevron { grid-area: chev; }
+  .problem-peek-hint { display: none; }
+}
+
+/* 笔记面板（题目笔记抽屉 / 笔记库 / 速览共用） */
+.notes-panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.note-source-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.note-card-highlight {
+  border-color: var(--brand-line) !important;
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+/* ============================================================
+   笔记库（pages/Notes.tsx）：左侧记过笔记的题目列表，右侧详情
+   ============================================================ */
+.notes-lib-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.notes-lib-search {
+  width: 280px;
+  max-width: 100%;
+}
+.notes-lib-stats {
+  margin-bottom: 12px;
+}
+.notes-lib {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.notes-lib.is-narrow {
+  grid-template-columns: minmax(0, 1fr);
+}
+.notes-lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-height: calc(var(--app-viewport-height) - 220px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.notes-lib.is-narrow .notes-lib-list {
+  max-height: none;
+  overflow: visible;
+}
+.notes-lib-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--item-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--dur-2) var(--ease-standard),
+    border-color var(--dur-2) var(--ease-standard);
+}
+.notes-lib-item:hover {
+  border-color: var(--item-hover-border);
+  background: var(--hover-bg);
+}
+.notes-lib-item:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.notes-lib-item.is-active {
+  border-color: var(--brand-line);
+  background: var(--brand-soft);
+}
+.notes-lib-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.notes-lib-item-time {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.notes-lib-item-title {
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notes-lib-item-snippet {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.notes-lib-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.notes-lib-detail {
+  min-width: 0;
+}
+.notes-lib-detail-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.notes-lib-detail-head .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notes-lib-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.problem-peek-body:focus { outline: none; }
+
+/* 追加 AI 提示词卡片（设置页 / AI 助手侧栏）：侧栏里可折叠，默认收起 */
+.ai-prompts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-prompts-toggle .anticon {
+  font-size: 10px;
+  color: var(--text-3);
+}
+.ai-prompts-toggle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.ai-prompts-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.ai-prompts-card.is-collapsed > .ant-card-body {
+  display: none;
+}
+.ai-prompts-card.is-collapsed > .ant-card-head {
+  border-bottom: 0;
+}
+
+/* 触屏导航排序（SiderMenu）：长按某一项进入排序态，只有这一项露出放大的上移 / 下移按钮 */
+@media (hover: none), (pointer: coarse) {
+  .sider-nav-row.reorder-host .sider-nav-item {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+/* 排序态：上移 / 下移只是两枚无底色的箭头，嵌在这一项右侧；整行高亮已经说明「正在排它」。
+   箭头颜色取这一项自己的文字色（选中实底上是反白，普通项上是正文色） */
+.sider-nav-row.is-reordering {
+  --reorder-ink: var(--text-2);
+}
+.sider-nav-row.is-reordering:has(.sider-nav-item.is-selected) {
+  --reorder-ink: var(--nav-selected-fg);
+}
+.sider-nav-row.is-reordering .sider-nav-item {
+  padding-right: 76px;
+}
+.sider-nav-row.is-reordering .sider-nav-item:not(.is-selected) {
+  background: var(--hover-bg);
+}
+.sider-nav-row.is-reordering > .reorder-controls {
+  right: 6px;
+  opacity: 1;
+  gap: 0;
+  padding: 0;
+  background: transparent;
+}
+.sider-nav-row.is-reordering .reorder-btn {
+  width: 32px;
+  height: 28px;
+  font-size: 13px;
+  opacity: 1;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reorder-ink);
+}
+/* 触屏点按后 :hover 会粘住，压过通用的悬停配色；排序态里统一回到胶囊配色 */
+.sider-nav-row.is-reordering .reorder-btn:hover:not(:disabled),
+.sider-nav-row.is-reordering .reorder-btn:focus-visible {
+  color: var(--reorder-ink);
+  background: transparent;
+}
+.sider-nav-row.is-reordering .reorder-btn:active:not(:disabled) {
+  background: transparent;
+  opacity: 0.6;
+}
+.sider-nav-row.is-reordering .reorder-btn:disabled {
+  opacity: 0.3;
 }

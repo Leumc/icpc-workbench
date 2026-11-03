@@ -7,11 +7,16 @@
  *    （opacity:0 不会移除 Tab 焦点，所以 Tab 到按钮时 :focus-within 会让它显形）。
  *    这条路径不改动拖拽代码，纯增量。
  *
- * 两条路径落盘后都给 3 秒「撤销」提示，误操作可回退。
+ * 3. **触屏路径**：手机 / 平板上箭头不常驻（opacity:0 的按钮在触屏上照样能点中，
+ *    贴在每一项右侧，点导航时极易误触），改为**长按**某一项进入排序态，
+ *    这一项才露出放大的上移 / 下移按钮；点这一项或点别处结束排序。
+ *
+ * 几条路径落盘后都给 3 秒「撤销」提示，误操作可回退。
  * 顺序持久化在 localStorage（见 menuConfig.tsx），折叠态保留分组分隔线。
  */
 import { useEffect, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, KeyboardEvent } from 'react'
+import type { MouseEvent as ReactMouseEvent, KeyboardEvent, TouchEvent as ReactTouchEvent } from 'react'
+import { useMediaQuery } from '../useMediaQuery'
 import { App as AntdApp, Button, Tooltip } from 'antd'
 import { IconArrowDown, IconArrowUp, IconUndo } from './icons'
 import {
@@ -27,6 +32,12 @@ import {
   useMenuOrder,
   type MenuOrder,
 } from '../menuConfig'
+
+/** 触屏判定：没有悬停能力或主指针是手指 */
+const TOUCH_QUERY = '(hover: none), (pointer: coarse)'
+/** 长按触发时长与允许的手指抖动（超过视为滑动） */
+const LONG_PRESS_MS = 500
+const LONG_PRESS_MOVE_TOLERANCE = 10
 
 interface SiderMenuProps {
   selected: string
@@ -54,6 +65,73 @@ export default function SiderMenu({ selected, collapsed, onNavigate }: SiderMenu
   const orderBeforeRef = useRef<MenuOrder | null>(null)
   /** 撤销提示的 key：连续排序时先销毁上一条，避免提示堆叠刷屏 */
   const msgKeyRef = useRef(0)
+
+  // ---------- 触屏：长按进入排序 ----------
+  /** 触屏设备（没有悬停）：箭头不常驻，长按才出现 */
+  const touch = useMediaQuery(TOUCH_QUERY)
+  /** 正在排序的项（长按选中）；null = 不在排序态 */
+  const [reorderKey, setReorderKey] = useState<string | null>(null)
+  const pressRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null)
+  /** 在此时刻之前的 click 一律吞掉：长按松手、结束排序的那一下都不能顺带导航 */
+  const suppressClickUntilRef = useRef(0)
+
+  const cancelPress = () => {
+    if (pressRef.current) clearTimeout(pressRef.current.timer)
+    pressRef.current = null
+  }
+
+  const handleTouchStart = (e: ReactTouchEvent<HTMLButtonElement>, key: string) => {
+    if (e.touches.length !== 1) return cancelPress()
+    cancelPress()
+    const t = e.touches[0]
+    pressRef.current = {
+      x: t.clientX,
+      y: t.clientY,
+      timer: setTimeout(() => {
+        pressRef.current = null
+        suppressClickUntilRef.current = Date.now() + 800
+        setReorderKey(key)
+        navigator.vibrate?.(12)
+      }, LONG_PRESS_MS),
+    }
+  }
+
+  const handleTouchMove = (e: ReactTouchEvent<HTMLButtonElement>) => {
+    const p = pressRef.current
+    if (!p) return
+    const t = e.touches[0]
+    // 手指在滑动（滚动导航）就不是长按
+    if (Math.hypot(t.clientX - p.x, t.clientY - p.y) > LONG_PRESS_MOVE_TOLERANCE) cancelPress()
+  }
+
+  // 排序态下点到这一行之外：结束排序，并吞掉这一下可能触发的导航
+  useEffect(() => {
+    if (reorderKey === null) return
+    const onDown = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest?.('.sider-nav-row.is-reordering')) return
+      suppressClickUntilRef.current = Date.now() + 600
+      setReorderKey(null)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+  }, [reorderKey])
+
+  // 离开触屏形态（如平板接上鼠标）时退出排序态
+  useEffect(() => {
+    if (!touch) setReorderKey(null)
+  }, [touch])
+
+  useEffect(() => cancelPress, [])
+
+  const handleItemClick = (key: string) => {
+    if (Date.now() < suppressClickUntilRef.current) return
+    // 排序态下点正在排序的这一项 = 完成排序，不导航
+    if (reorderKey !== null) {
+      setReorderKey(null)
+      return
+    }
+    onNavigate(key)
+  }
 
   const clearDrag = () => {
     dragKeyRef.current = null
@@ -152,6 +230,9 @@ export default function SiderMenu({ selected, collapsed, onNavigate }: SiderMenu
     const isDragging = dragKey === key
     const dropTarget = dragOver?.key === key
     const canDrag = !collapsed && groupKey !== null
+    const reordering = touch && reorderKey === key
+    // 鼠标设备：箭头随悬停 / 焦点显形；触屏：只有长按选中的那一项才渲染箭头
+    const showControls = canDrag && (!touch || reordering)
 
     const classNames = [
       'sider-nav-item',
@@ -170,8 +251,14 @@ export default function SiderMenu({ selected, collapsed, onNavigate }: SiderMenu
         role="menuitem"
         className={classNames}
         aria-current={isSelected ? 'page' : undefined}
-        onClick={() => onNavigate(key)}
+        onClick={() => handleItemClick(key)}
         onKeyDown={(e: KeyboardEvent<HTMLButtonElement>) => e.key === 'Enter' && onNavigate(key)}
+        onTouchStart={touch && canDrag ? (e) => handleTouchStart(e, key) : undefined}
+        onTouchMove={touch && canDrag ? handleTouchMove : undefined}
+        onTouchEnd={touch && canDrag ? cancelPress : undefined}
+        onTouchCancel={touch && canDrag ? cancelPress : undefined}
+        // 长按在部分 WebView 上会弹系统菜单 / 选中文字，触屏排序时屏蔽
+        onContextMenu={touch && canDrag ? (e) => e.preventDefault() : undefined}
         onMouseDown={canDrag ? (e) => handleMouseDown(e, key, groupKey) : undefined}
         onMouseEnter={canDrag ? (e) => handleMouseEnter(e, key, groupKey) : undefined}
         onMouseUp={canDrag ? () => handleMouseUp(groupKey) : undefined}
@@ -182,7 +269,7 @@ export default function SiderMenu({ selected, collapsed, onNavigate }: SiderMenu
     )
 
     return (
-      <div className={`sider-nav-row${canDrag ? ' reorder-host' : ''}`} key={key}>
+      <div className={`sider-nav-row${canDrag ? ' reorder-host' : ''}${reordering ? ' is-reordering' : ''}`} key={key}>
         {collapsed ? (
           <Tooltip title={label} placement="right">
             {item}
@@ -190,7 +277,7 @@ export default function SiderMenu({ selected, collapsed, onNavigate }: SiderMenu
         ) : (
           item
         )}
-        {canDrag && (
+        {showControls && (
           <span className="reorder-controls">
             <button
               type="button"

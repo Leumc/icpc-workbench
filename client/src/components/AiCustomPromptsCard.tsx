@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Spin } from 'antd'
+import { DownOutlined, RightOutlined } from '@ant-design/icons'
 import type { AiCustomPrompt } from '../../../shared/src/index.ts'
 import { get, post } from '../api'
 
-export default function AiCustomPromptsCard() {
+/**
+ * 追加 AI 提示词：设置页与 AI 助手侧栏各放一份（同一接口，改哪边都一样）。
+ * collapsible：标题可点开 / 收起，默认收起——提示词可能很长，侧栏里不该一上来就占满。
+ */
+export default function AiCustomPromptsCard({ collapsible = false, style }: { collapsible?: boolean; style?: CSSProperties } = {}) {
   const { message } = App.useApp()
+  const [collapsed, setCollapsed] = useState(collapsible)
   const [prompts, setPrompts] = useState<AiCustomPrompt[]>([])
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -32,8 +38,22 @@ export default function AiCustomPromptsCard() {
     }
   }
 
-  return <Card title="追加 AI 提示词" size="small" style={{ marginTop: 16 }}>
-    <p className="muted-note">每次 AI 辅导时，按列表顺序合并全部提示词，与题目、训练信息一起发送，不显示在会话框中。</p>
+  const title = collapsible ? (
+    <button
+      type="button"
+      className="ai-prompts-toggle"
+      aria-expanded={!collapsed}
+      onClick={() => setCollapsed((c) => !c)}
+    >
+      {collapsed ? <RightOutlined /> : <DownOutlined />}
+      <span>追加 AI 提示词</span>
+      {loaded && <span className="ai-prompts-count">{prompts.length} 条</span>}
+    </button>
+  ) : '追加 AI 提示词'
+
+  return <Card title={title} size="small" style={style ?? { marginTop: 16 }}
+    className={collapsible && collapsed ? 'ai-prompts-card is-collapsed' : 'ai-prompts-card'}>
+    <p className="muted-note" style={{ margin: '0 0 12px' }}>每次 AI 辅导时，按列表顺序合并全部提示词，与题目、训练信息一起发送，不显示在会话框中。</p>
     {!loaded ? <Space><Spin /><Button onClick={load}>重新加载</Button></Space> : <Space direction="vertical" style={{ width: '100%' }}>
       {prompts.map((prompt, index) => <div key={index} style={{ borderBottom: '1px solid var(--border-color, #d9d9d9)', paddingBottom: 12 }}>
         <Space wrap style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><strong style={{ overflowWrap: 'anywhere' }}>{prompt.title}</strong><Space>

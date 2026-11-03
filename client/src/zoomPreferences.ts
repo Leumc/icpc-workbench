@@ -20,6 +20,12 @@ const STORAGE_KEYS: Record<ZoomKind, string> = { global: GLOBAL_KEY, reply: REPL
 let snapshot: Record<ZoomKind, number> = { global: 100, reply: 100, note: 100 }
 const listeners = new Set<() => void>()
 
+/**
+ * AI 对话正文的基准倍率：控件上的「100%」对应旧版的 120% 字号（2026-11 按反馈整体放大一档），
+ * 用户调到的百分比都在这个基准上再乘，存储的百分比值不变。
+ */
+export const REPLY_BASE_SCALE = 1.2
+
 export const getZoomPreferences = () => snapshot
 export function subscribeZoomPreferences(listener: () => void): () => void {
   listeners.add(listener)
@@ -28,7 +34,7 @@ export function subscribeZoomPreferences(listener: () => void): () => void {
 
 function apply(): void {
   document.documentElement.style.setProperty('--app-zoom', String(snapshot.global / 100))
-  document.documentElement.style.setProperty('--ai-reply-text-zoom', String(snapshot.reply / 100))
+  document.documentElement.style.setProperty('--ai-reply-text-zoom', String((snapshot.reply / 100) * REPLY_BASE_SCALE))
   // 笔记字号只作用于笔记卡片正文（见 index.css 的 .note-card 段），
   // 卡片标题与按钮不在该变量作用域内，因此不会跟着一起变大。
   document.documentElement.style.setProperty('--note-text-zoom', String(snapshot.note / 100))

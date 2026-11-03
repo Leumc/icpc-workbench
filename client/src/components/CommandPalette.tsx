@@ -36,6 +36,7 @@ const PAGE_KEYWORDS: Record<string, string> = {
   '/plans': '计划 训练 plan 规划 安排',
   '/calendar': '日历 打卡 calendar 签到 出勤',
   '/reviews': '复习 review 间隔 记忆 重做',
+  '/notes': '笔记 笔记库 note notes 思路 踩坑 复盘 记录',
   '/contests': '赛事 比赛 contest 报名 rating',
   '/settings': '设置 setting 配置 账号 同步 偏好 主题',
   '/about': '关于 about 版本 更新 反馈',
